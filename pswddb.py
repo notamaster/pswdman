@@ -4,6 +4,8 @@ NB的程序 密码管理神器
 
 @author: notagod
 """
+import config
+import pswd
 
 class PswdDB:
     '''
@@ -20,27 +22,24 @@ class PswdDB:
         for i in self.db.keys():
             print(self.db[i])
         return
-    def exportData(self,path):
-        # 导出数据到csv #
-        import csv
-        csv.open(path)
+    def from_csv(path):
+        with open(path,'r') as f:
+            x = csv.reader(f)
+            for i in x:
+                for j in i:
+                    print(j,end = ' ')
+                print("*")
+                
+    def to_csv(path):
         pass
     '''
-    def addPswd(self,index=0):
+    def addPswd(self,apswd):
     #向数据库中添加数据
-        inDict = {}    
-        for i in BTLIST[1:]:
-            inDict[i] = input('请输入'+i) 
-        if index != 0:
-            tmp = index 
-        else:
-            if self.dList :
-                tmp = self.dList.pop(list(self.dList.keys())[0])
-            else:
-                tmp = str(len(self.db))
-        inDict['索引号：'] = tmp
-        self.db[tmp] = Pswd(inDict)
-        return
+        try:
+            self.db[apswd.index] = apswd
+        except:
+            return False
+        return True
     
     def searchPswd(self):
         #在数据控中查找数据
