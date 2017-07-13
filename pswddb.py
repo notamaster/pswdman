@@ -4,25 +4,109 @@ NB的程序 密码管理神器
 
 @author: notagod
 """
-import config
+import shelve
 import pswd
 
 class PswdDB:
     '''
-    密码数据库，支持增删改查
+    密码数据库，支持增删改查导入导出
     '''
     def __init__(self,dbname):
-        import shelve
+        '''
+        init pswddb class . In fact , it open two shelve databases
+        '''
         self.db = shelve.open(dbname,"c")
-        self.dList = shelve.open("dlist","c")
-        #self.startSize = len(self.db)
+        self.db_d = shelve.open(dbname+"_dl","c")
+        if 'dlist' not in self.db_d :
+            self.db_d['dlist'] = []
+        self.d_list = self.db_d['dlist']
         return
-    '''  # 做成迭代器 #
-    def showAllData(self):
-        for i in self.db.keys():
-            print(self.db[i])
+        
+    def append(self,xin):
+        '''
+        向数据库中添加数据，并自动生成索引号，xin为输入字典
+        '''
+        if not self.d_list:
+            index = str(len(self.db))
+        else:
+            index = self.d_list.pop()
+        self.db[index] = pswd.Pswd(index,xin)
+        return True
+        
+    def select(self,keyword,allsearch = 0):
+        '''
+        查找数据,返回找到的数据条数
+        '''
+        cnt = 0
+        if allsearch == 0:
+            for i in self.db:
+                if keyword in self.db[i].indexStr :
+                    print(self.db[i])
+                    cnt += 1
+        else:
+            for i in self.db:
+                if keyword[0] in self.db[i].allStr :
+                    print(self.db[i])
+                    cnt += 1
+        return cnt
+        
+    def deletData(self,index):
+        '''
+        删除数据，输入索引
+        '''
+        if index in self.db:
+            self.d_list.append(index)  #将索引添加至删除表中
+            print(self.db.pop(index)) 
+            return True
+        else:
+            return False
+    
+    def modifyData(self,index,xin):
+        '''
+        修改数据，输入索引和输入字典。本质是删除索引并用改索引建立新的Pswd对象
+        '''
+        if index in self.db:
+            self.deletData(index)
+            self.append(index,xin)
+            return True
+        else:
+            return False
+    
+    def showStatus(self):
+        '''
+        show status of the database
+        '''
+        print("当前数据库大小 : " + str(len(self.db)) )
+        print("回收站大小 : " + str(len(self.d_list)))
+        #显示回收站中的索引号:
+        #for i in self.dList:
+        #    print(i,end =" ")
+        print()
         return
+    
+    def showDataList(self):
+        '''
+        show data list
+        '''
+        print("_"*15+"DataList"+"_"*15)
+        for i in self.db:
+            print(i,self.db[i].name,sep=" -> ")
+        print("_"*40)
+        return
+    
+    def close(self):
+        '''
+        close database
+        '''
+        self.db.close()
+        self.db_d.close()
+        print("数据库已关闭 ！！！")
+        
     def from_csv(path):
+        '''
+        
+        '''
+        import csv
         with open(path,'r') as f:
             x = csv.reader(f)
             for i in x:
@@ -31,107 +115,20 @@ class PswdDB:
                 print("*")
                 
     def to_csv(path):
-        pass
-    '''
-    def addPswd(self,apswd):
-    #向数据库中添加数据
-        try:
-            self.db[apswd.index] = apswd
-        except:
-            return False
-        return True
-    
-    def searchPswd(self):
-        #在数据控中查找数据
-        cnt = 0
-        keyword = input("input keywords :").split()
-        try:
-            if len(keyword) <= 1 :
-                for i in self.db:
-                    if keyword[0] in self.db[i].indexStr :
-                        print(self.db[i])
-                        cnt += 1
-            elif keyword[1] == "-a":
-                for i in self.db:
-                    if keyword[0] in self.db[i].allStr :
-                        print(self.db[i])
-                        cnt += 1
-        except:
-            print("关键词错误！！！")
-        return cnt
-    
-    def showStatus(self):
-        print("当前数据库大小 : " + str(len(self.db)) )
-        print("回收站大小 :" + str(len(self.dList)))
-        for i in self.dList:
-            print(i,end =" ")
-        print()
-        return
-    
-    def showDataList(self):
-        print("_"*15+"DataList"+"_"*15)
-        for i in self.db.keys():
-            print(i,self.db[i].name,sep=" -> ")
-        print("_"*40)
-        return
-    
-    def deletData(self,index):
-        if index in self.db:
-            self.dList[index] = index  #将索引添加至删除表中
-            print(self.db.pop(index)) 
-            return True
-        else:
-            return False
-    
-    def modifyData(self,index):
-        if index in self.db:
-            print(self.db[index])
-            #self.deletData(name)
-            self.addPswd(index)
-            return True
-        else:
-            return False
-    
-    def main(self):
-        #控制流方法
-        print("当前数据库大小 : " + str(len(self.db)) )
-        while 1:
-            print("_"*40)
-            op = input("请输入操作码 : ")
-            if op.lower() == "q":
-                break
-            elif op.lower() == "a":
-                self.addPswd()
-                print("添加成功！！")
-            elif op.lower() == "s":
-                self.showStatus()
-                self.showDataList()
-            elif op.lower() == "m":
-                self.showDataList()
-                name = input("输入要修改的数据 ：")
-                if self.modifyData(name):
-                    print("修改成功！！！")
-                else:
-                    print("未找到数据！！！")
-            elif op.lower() == "d":
-                self.showDataList()
-                name = input("输入要删除的数据（谨慎操作！！） ：")
-                if self.deletData(name):
-                    print("数据已删除！！！")
-                else:
-                    print("未找到数据！！！")
-            elif op == "":
-                tmp = str(self.searchPswd())
-                print("查询完成！找到数据共计 "+tmp+" 条！！！")
-            else:
-                print("操作码错误！！按Q键退出！！")
-        self.db.close()
+        '''
         
+        '''
+        import csv
+        with open(path,'r') as f:
+            x = csv.reader(f)
+            for i in x:
+                for j in i:
+                    print(j,end = ' ')
+                print("*")
+ 
         
 if __name__ == "__main__":
-    DATABASE = "shadow"
-    x = PswdDB(DATABASE)
-    print('*'*40,'*'*5+' ————NB的程序正在运行！！———— '+'*'*6,'*'*40,sep='\n')
-    x.main()        
-    print('*'*40,'*'*5+' ————NB的程序即将停止！！———— '+'*'*6,'*'*40,sep='\n')
-    input("查询结束，数据库已关闭！！")
+    '''
+    test code
+    '''
+    help(PswdDB)
